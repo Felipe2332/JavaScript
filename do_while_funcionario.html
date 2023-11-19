@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>js4_calculo_de_salario</title>
+<meta http-equiv="Content-Type" content="text/html; ">
+<meta charset="utf-8"/>
+</head>
+<body>
+    <script lang="javascript">
+        // Calcular salário loquido de um funcionário horista
+        //é necessário saber a quantidade de horas trabalhadas no mês
+        //Valor da hora
+        //Percentual de desconto do INSS
+        //Serão 3 variáveis para os negócio acima
+        //Usando window prompt na entrada e document write para saída
+
+        //Variáveis
+        var qtd_horas;
+        var valor_hora
+        var percentual_deconto;
+        var total_descontos;
+        var bruto;
+        var liquido;
+        var js_resposta;
+        var confirmacao;
+
+        confirmacao = parseInt(window.prompt('Quantos funcionários deseja calcular?','00'));
+
+        do{
+        
+        //Entrada
+        qtd_horas = parseFloat(window.prompt('Informe a quantidade de horas trabalhadas no mês. (135 a 180)','00'));
+        valor_hora = parseFloat(window.prompt('Informe quanto o funcionário ganha por hora(25 a 50 reais)','00'));
+        percentual_desconto = parseFloat(window.prompt('Quanto de desconto em % do INSS(5 a 15)','00'));
+
+        //Cálculo
+        bruto = qtd_horas * valor_hora;
+        total_descontos = (percentual_desconto/100) * bruto;
+        liquido = bruto - total_descontos;
+
+        //Saída
+        document.write('O salário bruto do funcionário é R$'+ bruto);
+        document.write('<br>Com descontos de R$'+ total_descontos);
+        document.write('<br>Salário líquido de R$'+liquido);
+
+        //Verificação de dados digitados
+        document.write('<br>O funcionário trabalhou '+ qtd_horas);
+        if (qtd_horas>180)
+        {
+            document.write('<br>Valor digitado excede a quantidade de horas, você está escravizando o cara?');
+        }
+        if(qtd_horas<135)
+        {
+            document.write('<br>Valor digitado é menor que o sugerido, coloca o cara para trabalhar');
+        }
+
+        document.write('<br>O funcionário ganha R$'+valor_hora+' reais a hora');
+        if(valor_hora>50)
+        {
+            document.write(' ////Valor digitado incorreto');
+        }
+        if(valor_hora<25)
+        {
+            document.write(' ////Valor digitado incorreto');
+        }
+
+        /*document.write('Com um desconto de '+ percentual_deconto);
+        if(percentual_deconto>15)
+        {
+            document.write('Valor digitado incorreto');
+        }
+        if(percentual_deconto<5)
+        {
+            document.write('Valor digitado incorreto');
+        }
+        */
+
+        document.write('<br><br>=====================================');
+        document.write('<br>Nossa review do salário é......');
+
+        if(liquido>3000 && liquido<5000)
+        {
+            document.write('<p>O cara tá bem mas dá para melhorar');
+        }
+        else if(liquido>=5000 && liquido<=7999)
+        {
+            document.write('<p>Cara tá saudável');
+        }
+        else if(liquido>=8000)
+        {
+            document.write('<br>Hector silva');
+        }
+
+        confirmacao=confirmacao-1;
+    
+    }//Erro lógico aqui. Mentira,acertei
+    while(confirmacao>0);
+
+        
+
+    </script>
+</body>
+</html>
+
+
+
+

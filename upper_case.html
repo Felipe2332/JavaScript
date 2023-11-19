@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <title>Método upper_case</title>
+    <meta http-equiv="Content-Type" content="text/html" charset="utf-8"/>
+    <meta charset="utf-8"/>
+    </head>
+    <body>
+        <h3> Formulário de consulta de curso</h3>
+        <p></p>
+        <form name="formcurso" action="" method="post"><!--size é o tamanho na tela, maxlength é quantos caracteres aceita-->
+            Digite seu curso <input type="text" name="f_curso" size="8" maxlength="4"/> (SIST)
+            Digite sua matéria de escolha <input type="text" name="f_materia" size="8" maxlength="14"/> Português<p></p>
+            
+            <input type="button" name="btn_validar" value="Validar" onclick="cadcurso()"/>
+            <input type="button" name="btn_valida_materia" value="Verificar matéria" onclick="cadmateria()"/>
+            <input type="reset" name="btn_cancelar" value="Limpar" /><p></p>
+
+            Código do curso: <input type="text" name="f_codcurso" size="15" maxlength="10"/>
+            Código da matéria: <input type="text" name="f_codmateria" size="15" maxlength="10"/>
+        </form>
+        <script lang="javascript">
+            //Uso do método upper case para armazenar a informação digitada pelo usuário para caracteres iguais
+            //Se a variável for igual à digitada  apresentar mensagem curso encontrado ou digite novamente
+            //Variaveis
+            var js_cursodig;
+            var js_materiadig;
+    
+            //Inicio
+            function cadcurso()
+            {
+                js_cursodig = document.formcurso.f_curso.value;
+                if(js_cursodig.toUpperCase()=='SIST')
+                {
+                    document.formcurso.f_codcurso.value = 'SIST001/FB';
+                }
+                //Quando utiliza-se toUpperCase transforma qualquer coisa digitada pelo usuário como uma só
+                else
+                {
+                    window.alert('Curso inválido');
+                }
+            }
+
+            function cadmateria()
+            {
+                js_materiadig = document.formcurso.f_materia.value;
+
+                if(js_materiadig.toLowerCase()=='português' || js_materiadig.toLowerCase()=='Português')
+                {
+                    document.formcurso.f_codmateria.value = 'Port - 003';
+                }
+                else
+                {
+                    window.alert('Matéria inválida');
+                }
+
+            }
+            
+        </script>
+    </body>
+    
+</html>

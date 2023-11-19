@@ -1,0 +1,187 @@
+define([],function(  ){
+
+	var defaults = {
+		pagesListUrl: "list.txt",
+		templateUrl: framework_url + "js/fgv/templates/nm.nav.html",
+		hasSummary: false,
+	};
+
+	var $elem = $('[data-active="nm_nav"]');
+
+	var opts = {
+		pagesListUrl: $elem.attr('data-pagesurl') || defaults.pagesListUrl,
+		templateUrl: $elem.attr('data-templateurl') || defaults.templateUrl,
+		hasSummary: $elem.attr('data-summary') || defaults.hasSummary
+	}
+
+	var status = 'ready';
+	var loads = {
+		html: false,
+		json: false
+	};
+
+	var page = 0;
+	var pages = [];
+	var structure;
+	var $nav = $('<nav/>');
+
+	var jq = $;
+
+	var findPages = function( parent, children, array ){
+		for (var j = children.length - 1; j >= 0; j--) {
+			children[j].parent = parent;
+			if( children[j].children ) findPages( children[j], children[j].children, array );
+			if( !children.hidden ) array.unshift( children[j] );
+		}
+	}
+
+	var init = function(){
+		if( status !== "ready" ) return;
+		status = 'loading';
+
+		$.ajax({
+			
+			url:opts.templateUrl,
+		    crossDomain : true,
+		    xhrFields: {
+		        withCredentials: false
+		    },
+			success:  function( res ){
+				//pages = [];
+				$ = jq;
+
+				$nav.html( $(res).html() );
+				$nav[0].className = $(res)[0].className;
+
+				loads.html = true;
+
+				if( loads.html && loads.json ) loadContent();
+			}
+		});
+
+		$.getJSON( opts.pagesListUrl, function( res ){
+			loads.json = true;
+			//pages = res.files;
+			
+			pages = [];
+			findPages( false, res.files, pages );
+			for (var i = pages.length - 1; i >= 0; i--) {
+				pages[i].index = i;
+			}
+
+			structure = res.files;
+			
+			//console.log( "pages: " + pages );
+			if( loads.html && loads.json ) loadContent();		
+		});
+	};
+
+	var onLoad = function( callback ){
+		if( status !== "loaded"){
+			$nav.on('load', callback );
+		}else{
+			callback( {'type':'load'}, pages, structure, page );
+		}
+	}
+
+	var findCurrentPage= function( url, canBeFalse ){
+		var result = false;
+		//console.log( pages );
+		for( var i = pages.length - 1; i >= 0; i-- ) {
+			//console.log( pages[i].path, pages[i].path.split('/').pop(), current );
+			if( pages[i].path.split('/').pop() == url ) return i;			
+		};
+		if( !result && canBeFalse !== false ){
+			return findCurrentPage( url.split("#")[0], false );
+		}else{
+			return false;
+		}
+	}
+
+	var setSetas = function( ops ){
+		if( ops.prev ){
+			if( ops.prev.href ) $nav.find("[href='#prev']").attr('href', ops.prev.href );
+			if( ops.prev.disabled != undefined ){
+				if( ops.prev.disabled ){
+					$nav.find("[href='#prev']").attr('disabled','disabled'); 
+					$nav.find("div.btn.previous").addClass('disabled');
+				}else{
+					$nav.find("[href='#prev']").removeAttr('disabled','disabled'); 
+					$nav.find("div.btn.previous").removeClass('disabled');
+				};
+			};
+		};
+		if( ops.next ){
+			if( ops.next.href ) $nav.find("[href='#next']").attr('href', ops.next.href );
+			if( ops.next.disabled != undefined ){
+				if( ops.next.disabled ){
+					$nav.find("[href='#next']").attr('disabled','disabled'); 
+					$nav.find("div.btn.next").addClass('disabled');
+				}else{
+					$nav.find("[href='#next']").removeAttr('disabled','disabled'); 
+					$nav.find("div.btn.next").removeClass('disabled');
+				};
+			};
+		};
+	};
+
+	var setCounter = function( current, total, sep ){
+		( sep || ( sep = "/" ) );
+		sep = " " + sep.replace(' ','') + " ";
+		$nav.find('.pages').html( ( [ current, sep, total ] ).join('') );
+	};
+
+	var loadContent = function(){
+		/*$.ajax({
+			url: pages[page].path,
+			success:  function( res ){
+				$('[data-active=nm_nav]').html( res );
+				var nav = $nav.clone(true, true);
+				nav.find('.pages').html( ( page + 1 ) + " / " + pages.length );
+				( $('.container').length ? $('.container') : $('[data-active=nm_nav]') ).append( nav );				
+			}
+		});*/
+		$ = jq;
+		var page = findCurrentPage( window.location.href.split('/').pop() );
+
+		//if( page ){ $nav.find("[href='#prev']").attr('href', pages[ page - 1 ].path ); } else { $nav.find("[href='#prev']").attr('disabled','disabled'); $nav.find("div.btn.previous").addClass('disabled'); }
+		//if( page < pages.length - 1 ){ $nav.find("[href='#next']").attr('href', pages[ page + 1 ].path ); } else { $nav.find("[href='#next']").attr('disabled','disabled'); $nav.find("div.btn.next").addClass('disabled'); }
+		setSetas({
+			prev:{
+				href: 		( page )?( pages[ page - 1 ].path ) : '#' ,
+				disabled: 	( page == 0 )
+			},
+			next:{
+				href: 		( page < pages.length - 1 )?( pages[ page + 1 ].path ) : '#' ,
+				disabled: 	( page >= pages.length - 1 )
+			}
+		});
+
+		setCounter( ( page + 1 ), pages.length );
+		$('[data-active=nm_nav]' ).append( $nav );
+		framework.nm_nav = { pages:pages, structure: structure, current: page };	
+		$nav.data( 'pages', pages );
+		$nav.data( 'structure', structure );
+
+		//console.log('hasSummary: ', opts.hasSummary);
+		//framework.$('a[data-toggle="tooltip"], [data-toggle="tooltip"] > a ').tooltip();
+		// if(opts.hasSummary) {
+
+		// }
+
+		status = 'loaded';
+		$nav.trigger( 'load', [pages, structure, page] );
+	}
+
+	if( $elem.length > 0 ){ init(); }
+	return { 
+		elem: $nav.data( 'nav', this ), 
+		init: init, 
+		opts: opts, 
+		onLoad: onLoad, 
+		setas: setSetas, 
+		findPages: findPages,
+		setCounter: setCounter
+	};
+
+});

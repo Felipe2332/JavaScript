@@ -1,0 +1,319 @@
+var cachedBefore = function() {
+
+	var clickEventName = $('html').hasClass('touch') ? "touchstart" : "click";
+
+	var base = $('#main');
+
+	window.svgBoxAnimate = {
+		$svg: false,
+		_currentAnimate: false,
+		set: function( values, $target ){
+			$target[0].setAttribute('viewBox', values  );
+		},
+		animate: function( start, end, time, cb, $target ){
+			( ( $target ) || ( $target = this.$svg ) ); 
+			var self = this;
+
+			var startObj = {
+				x: 		parseFloat( start[0] ),
+				y: 		parseFloat( start[1] ),
+				width:  parseFloat( start[2] ),
+				height: parseFloat( start[3] )
+			};
+			//startObj.x -= startObj.width  / 2;
+			//startObj.y -= startObj.height / 2;
+
+			var endObj = {
+				x: 		parseFloat( end[0] ),
+				y: 		parseFloat( end[1] ),
+				width:  parseFloat( end[2] ),
+				height: parseFloat( end[3] )
+			};
+			//endObj.x -= endObj.width  / 2;
+			//endObj.y -= endObj.height / 2;
+
+			var animObj = {
+				x: 		startObj.x,
+				y: 		startObj.y,
+				width:  startObj.width,
+				height: startObj.height,
+			}
+
+			if( this._currentAnimate ) this._currentAnimate.stop();
+			this._currentAnimate = $( startObj );
+			this._currentAnimate.delay( 0 ).animate( endObj, {
+										duration: time,
+										//easing: 'easeInOutQuart',
+										step: function (now, fx) {
+											console.log('ativo');
+											if (fx.prop == "width") {
+												animObj.width = now;
+											} else if (fx.prop == "height") {
+												animObj.height = now;
+											} else if (fx.prop == "x") {
+												animObj.x = now;
+											}
+											else if (fx.prop == "y") {
+												animObj.y = now;
+											}
+											$target[0].setAttribute('viewBox', [ animObj.x, animObj.y, animObj.width, animObj.height ].join(' ')  );
+										},
+										complete: ( cb )
+									});
+		}
+	}
+
+
+// --------------- PILLS / TABS ----------------
+	$('.pills').each(function(){
+		var $scope = $(this);
+		$(document).on('shown.bs.tab', function (e) {
+			$scope.find('.nav-pills .active').not( $( e.target ).parent() ).removeClass('active');
+			console.log(e);
+		});
+	})
+
+
+// --------------- POP-UP COLORIDA ----------------
+	var sizes = {
+		'sm':{
+			h: 350,
+			w: 350
+		},
+		'md':{
+			h: 500,
+			w: 500
+		},
+		'lg':{
+			h: 500,
+			w: 850
+		}
+	};
+    $("[data-toggle='popover']").popover({
+    	container: "body",
+    	html:"true",
+    	trigger: ( clickEventName == "click" ? "focus" : "hover" )
+    }).on("click",function(){
+    	$(this).trigger('focus');
+    });
+	//$('svg, svg text, svg tpan').css({ "pointerEvents": "none" });
+	//$('svg a[data-popupcolorida="true"], svg g').css({ "pointerEvents": "painted" });
+	$( 'body' ).on(clickEventName,'area:not(.popover), a[data-popupcolorida]', function(e){
+
+		console.log("Click");
+		var isArea = $(this).is('area');
+
+		var $popup = $( '.popup-colorida' ).last();
+		var $popup_overlay = $( '.popup-colorida-overlay' ).last();
+		if( !$popup_overlay.length ){ 
+			var $popup_overlay = $("<div />", { 'class': 'popup-colorida-overlay hide' });
+			$popup_overlay.insertAfter( $popup );
+		};
+
+		var texto = $(this).attr( 'href' );
+		var janela = $(this).attr( 'id' );
+		var size = $(this).data('size') || 'sm';
+		var img = $(this).data( 'source' );
+		if( isArea ) $( '#img-replace' ).attr( 'src' , img );
+
+		if( $popup.hasClass('open') ) return;
+
+		var imgElem = isArea ? $('img[usemap]') : $(window);
+		if( !imgElem.length ) return;
+
+		var img = isArea ? imgElem.position() : { top:0 , left:0 };
+		img.height = imgElem.height();
+		img.width  = imgElem.width();
+
+		var $container = $popup.offsetParent();
+		$container = $container.length ? $container : $(window) ;
+
+		//var win = $(window);
+		var prop = {
+			h: img.height / sizes[size].h,
+			w: img.width  / sizes[size].w
+		}
+
+		var win = $container.offset() || {left: 0, top:0 };
+		win.startX = win.left;
+		win.startY = win.top;
+		win.scrollLeft = $container.scrollLeft(),
+		win.scrollTop =  $container.scrollTop(),	
+		win.top =  $container.height()/2,
+		win.left = $container.width()/2
+
+		var mauze = {
+			left: Math.floor(( e.pageX - img.left ) / img.width  * 100 ),
+			top:  Math.floor(( e.pageY - img.top  ) / img.height * 100 )
+		}
+
+		$popup.attr( 'class', [ 'popup-colorida', 'open', janela, size ].join(' ') )
+			.css( {
+				'transition': 'none',
+				'left': e.pageX - win.startX - win.scrollLeft,
+				'top':  e.pageY - win.startY - win.scrollTop
+			})
+			.find( '.textos > div' )
+			.addClass( 'hide' )
+			.filter( texto )
+			.removeClass( 'hide' );
+
+		$popup_overlay.removeClass( 'hide' );
+
+		setTimeout(function(){						
+			$popup.css({'transition': 'all 0.3s ease'})
+				.css({'left': win.left})
+				.css({'top':  win.top})
+				.css({'transform': 'scale(1)'});		
+		}, 200 );
+
+		return false;
+	});
+
+	$( 'body' ).off( clickEventName + '.popupcoloridaevents' ).on( clickEventName + '.popupcoloridaevents', '.popup-colorida button, .popup-colorida-overlay', function() {
+		$( '.popup-colorida' ).removeClass( 'open' );
+		$( '.popup-colorida-overlay' ).addClass( 'hide' );
+		$( '.popup-colorida' ).css({'transform': 'scale(0)'});
+		var img = $( '#img-replace' ).data( "src" );
+		$( "#img-replace" ).attr( "src" , img );		
+	});
+
+	/* // FECHA MODAIS AO CLICKAR FORA!!!
+	$(document).bind( "mouseup touchend", function (e){
+	    var containers = $(".popup-colorida, .modal-content, .pop-tela-content-wrap");
+
+	    containers.each(function( i, elem ){
+	    	var container = $( this );
+
+	    	if ( container.is(':visible') ){
+				if ( !container.is(e.target) // if the target of the click isn't the container...
+					&& container.has(e.target).length === 0) // ... nor a descendant of the container
+				{
+					var button = container.find('button');
+				   	if ( button.is(':visible') ) button.click();
+				}	    
+			}	
+	    })
+
+	});
+	*/
+	
+	// remove o evento de touch dos flips com evento de click
+	$('body [data-onclick=true][ontouchstart="this.classList.toggle(\'hover\');"]').removeAttr('ontouchstart').unbind('touchstart');
+	$('body [data-onclick=true][onclick="this.classList.toggle(\'hover\');"]').removeAttr('onclick').unbind('click');
+	// aplica evento de click em elementos simulando hover 
+	$('body').on(clickEventName,'[data-onclick=true]', function(e){
+		$(this).toggleClass('hover');
+		e.stopPropagation(); //stops propagation
+		return false;
+	});
+
+	$(window).resize(function(){
+		$('.flip-horizontal .flipper').each(function(){			
+			var biggestHeight = 0;
+			$(this).children().each(function(){
+				if ($(this).height() > biggestHeight ) {
+					biggestHeight = $(this).outerHeight(true);
+				}
+			});
+			$(this).height(biggestHeight);				
+		});
+	}).resize();
+	$('.flip-horizontal .flipper img').on('load', function(){ console.log('loading'); $(window).resize(); });
+
+	/*---------------------------------------------------------------*/
+
+	/*---------------------- DIV EXPANSÍVEIS -----------------------------*/
+
+	if( base.find( '.expande-vertical' ).length ){
+
+		base.find( '.expande-vertical' ).each(function(){
+
+			$( this ).find( '.imagem-link' ).click(function(){
+				$( this ).parent().addClass( 'clicado' );
+			});
+		});	
+	}
+
+	/*---------------------------------------------------------------*/
+
+	/*---------------------- APARECE LATERAL -----------------------------*/
+
+	if( base.find( '.aparece-lateral' ).length ){
+
+		base.find( '.aparece-lateral' ).each(function(){
+			var $self = $(this);
+
+			$( this ).find( '.cont' ).click(function(){
+				$( this ).toggleClass( 'clicado' );
+			});
+
+			var tamanhoH = Math.max( $( this ).find( '.cont' ).outerHeight(), $( this ).find( '.descricao' ).outerHeight() );
+			$( this ).find( '.descricao, .cont' ).css( 'minHeight', tamanhoH );
+
+			$( window ).resize(function() {					
+				var tamanhoH = Math.max( $self.find( '.cont' ).outerHeight(), $self.find( '.descricao' ).outerHeight() );
+				$self.find( '.descricao, .cont' ).css( 'minHeight', tamanhoH );
+			})
+
+		});	
+
+
+	}
+
+	/*---------------------------------------------------------------*/
+
+	/*---------------------- APARECE FADE -----------------------------*/
+
+	if( base.find( '.aparece-fade' ).length ){
+
+		base.find( '.aparece-fade' ).each(function(){
+
+			$( this ).find( '.cont' ).click(function(){
+				$( this ).toggleClass( 'clicado' );
+			});
+
+			var tamanhoH = $( this ).find( '.cont' ).height();
+			$( this ).find( '.descricao' ).css( 'height', tamanhoH );
+
+			$( window ).resize(function() {					
+				var tamanhoH = $( '.aparece-fade' ).find( '.cont' ).height();
+				$( '.aparece-fade' ).find( '.descricao' ).css( 'height', tamanhoH );
+			})
+
+		});	
+
+
+	}
+
+	/*---------------------- FADE IN -----------------------------*/
+
+	if( base.find( '.fadeIn' ).length ){			
+
+		base.find( '.fadeIn' ).each(function(){
+
+			var setDelay = $( this ).data( 'delay' ) * 1000;
+
+			var self = $(this);
+
+			setTimeout(function(){	
+
+				self.find( '.cont' ).addClass( 'in' );
+
+			}, setDelay);
+
+			console.log(setDelay);
+
+			var tamanhoH = $( this ).find( '.cont' ).height();
+			$( this ).find( '.descricao' ).css( 'minHeight', tamanhoH );
+
+			$( window ).resize(function() {					
+				var tamanhoH = $( '.fadeIn' ).find( '.cont' ).height();
+				$( '.fadeIn' ).find( '.descricao' ).css( 'minHeight', tamanhoH );
+			});
+
+		});	
+
+	}
+
+}

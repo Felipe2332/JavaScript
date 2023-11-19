@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <title>CPF</title>
+    <meta http-equiv="Content-Type" content="text/html" charset="utf-8"/>
+    <meta charset="utf-8"/>
+    </head>
+    <body>
+        <h2>Digite seu CPF</h2>
+        <P></P>
+        <form name="formulario" onSubmit='return verifica_cpf(this)''>
+        <tt><p>
+            <small><font = "Verdana"> CPF: <input type="text" name="cpf" size="15">
+                <br><br>
+                <input type="submit" value="Testar CPF"></font></small></tt></p>
+        </form>
+        <script lang="javascript">
+            //Aprender o uso do CPF
+            //Variaveis
+          
+            //Inicio
+            function verifica_cpf(formulario)
+            {
+                var cpf = formulario.cpf.value;//Recebe o valor digitado
+
+                //Verifica se o campo é NULO
+                if(cpf =="")
+                {
+                    alert('Este campo é obrigatório');
+                    return false;
+                }
+            
+            //Checagem CPF
+            var posicao,i,soma,dv,dv_informado;
+            var digito = new Array(10);
+            dv_informado = cpf.substr(9,2);//Retira os dois últimos digitos do número informado
+            }
+
+            //Desmembra o número do CPF na array 'digito'
+            for(i=0;i<=8;i++)
+            {
+                digito[i]=cpf.substr(i,1);
+            }
+
+            //Calcula o valor do 10° dígito da verificação
+            posicao = 10;
+            soma = 0;
+            for(i=0;i<=8;i++)
+            {
+                soma = soma + digito[i] * posicao;
+                posicao = posicao - 1;
+            }
+
+            digito[9] = soma % 11;
+            if(digito[9] < 2)
+            {
+                digito[9] = 0
+            }
+            else
+            {
+                digito[9] = 11 - digito[9]
+            }
+
+            //Calcula o valor do 11° digito da verificação
+            posicao = 11;
+            soma = 0;
+            for(i=0;i<=9;i++)
+            {
+                soma = soma + digito[i] * posicao;
+                posicao = posicao - 1;
+            }
+            digito[10] = soma % 11;
+            if(digito < 2)
+            {
+                digito[10] = 0;
+            }
+            else
+            {
+                digito[10] = 11 - digito[10]
+            }
+
+            //Verifica se os valores dos digitos verificadores conferem
+            dv = digito[9] * 10 + digito[10];
+            if(dv != dv_informado)
+            {
+                alert('CPF inválido');
+                formulario.cpf.value='';
+                formulario.cpf.focus();
+                return false;
+            }
+        
+        </script>
+    </body>
+    
+</html>

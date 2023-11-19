@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>js6_Uso_do_Switch_Case</title>
+<meta http-equiv="Content-Type" content="text/html; ">
+<meta charset="utf-8"/>
+</head>
+<body>
+
+    <--Linha de comentário HTML: Definição do formulário para entrada de dados-->
+    <form name="formcalendario" action="" method="post">
+        Digite o mes (1 a 12): <input type="text" name="f_mes" size="4" maxlength="2"/><p></p>
+        <input type="button" name="btn_processar" value="Processar" onclick="Verificar_mes()"/>
+        <input type="reset" name="btn_cancelar" value="Cancelar" /><p></p>
+        O mes correspondente e: <input type="text" name="f_nomemes" size="18" maxlength="15"/>;
+    </form>
+
+    <script lang="javascript">
+        //Objetivo: Através do Switch case, encontrar o mês escrito por extenso através do número digitado
+        //Usando document.form (entrada de dados através de formulário)
+        //Saída de dados document.form (via formulario)
+        //Os coampos do formulário serão identificados com f_ e do Javascript como js_
+
+        //Variáveis
+        var js_mes;
+        
+
+        //Inicio da função verifica mes
+        function Verificar_mes()
+        {
+            //Captura o valor digitado no formulário e tranfere para a variável do JavaScript
+            js_mes=parseInt(document.formcalendario.f_mes.value);
+
+            //Inicio do Switch case
+            switch(js_mes)
+            {
+                case 1: document.formcalendario.f_nomemes.value = "Janeiro"; break;
+                case 2: document.formcalendario.f_nomemes.value = "Fevereiro";break;
+                case 3: document.formcalendario.f_nomemes.value = "Março";break;
+                case 4: document.formcalendario.f_nomemes.value = "Abril";break;
+                case 5: document.formcalendario.f_nomemes.value = "Maio";break;
+                case 6: document.formcalendario.f_nomemes.value = "Junho";break;
+                case 7: document.formcalendario.f_nomemes.value = "Julho";break;
+                case 8: document.formcalendario.f_nomemes.value = "Agosto";break;
+                case 9: document.formcalendario.f_nomemes.value = "Setembro";break;
+                case 10: document.formcalendario.f_nomemes.value = "Outubro";break;
+                case 11: document.formcalendario.f_nomemes.value = "Novembro";break;
+                case 12: document.formcalendario.f_nomemes.value = "Dezembro";break;
+            default: document.formcalendario.f_nomemes.value = "Numéro digitado incorreto"; break;
+            }
+
+        }
+        //Final da função Verifica_mes() para captura de dados
+        
+
+        //Saída de dados
+        
+    </script>
+</body>
+</html>
+
+

@@ -1,0 +1,970 @@
+(function( root ){
+
+	if (!window.localStorage) {
+		window.localStorage = {
+			getItem: function (sKey) {
+				if (!sKey || !this.hasOwnProperty(sKey)) { return null; }
+				return unescape(document.cookie.replace(new RegExp("(?:^|.*;\\s*)" + escape(sKey).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*((?:[^;](?!;))*[^;]?).*"), "$1"));
+			},
+			key: function (nKeyId) {
+				return unescape(document.cookie.replace(/\s*\=(?:.(?!;))*$/, "").split(/\s*\=(?:[^;](?!;))*[^;]?;\s*/)[nKeyId]);
+			},
+			setItem: function (sKey, sValue) {
+				if(!sKey) { return; }
+				document.cookie = escape(sKey) + "=" + escape(sValue) + "; expires=Tue, 19 Jan 2038 03:14:07 GMT; path=/";
+				this.length = document.cookie.match(/\=/g).length;
+			},
+			length: 0,
+			removeItem: function (sKey) {
+				if (!sKey || !this.hasOwnProperty(sKey)) { return; }
+				document.cookie = escape(sKey) + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+				this.length--;
+			},
+			hasOwnProperty: function (sKey) {
+				return (new RegExp("(?:^|;\\s*)" + escape(sKey).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=")).test(document.cookie);
+			}
+		};
+		window.localStorage.length = (document.cookie.match(/\=/g) || window.localStorage).length;
+	}
+
+	function uniqueUrlKey( folder ){
+		var local = window.location.pathname;
+		local = ( folder ? local.slice( 0, local.lastIndexOf('/') ) : local ).replace(/[\/\.]/gi,'_');
+		var limit = 64;
+
+		if( local.length <= limit ){
+			return local;
+		}else{
+			var c = 0;
+			var rest = local.slice(0, -1 * limit);			
+			for (var i = 0; i < rest.length; i++) {
+				c += rest.charCodeAt(i);
+			}
+			return ([ c, local.length, local.slice(-1 * limit)]).join('#');
+		}
+	};
+
+	var con = {/** ... */
+		_status: false,
+		_delay: null,
+		_api: null,	
+		_conCount:0,
+		_conCountLimit:10,
+		_conTryDelay:100,
+		_useLocalcache: false,
+		_debbug: false,
+		_suspendDataLimit: 4096,
+		_shareScormAtFolder: true,
+		_apiWin: null,
+		// API wrapper methods
+		_erros:{
+			_NoError : 0,
+			_GeneralException : 101,
+			_ServerBusy : 102,
+			_InvalidArgumentError : 201,
+			_ElementCannotHaveChildren : 202,
+			_ElementIsNotAnArray : 203,
+			_NotInitialized : 301,
+			_NotImplementedError : 401,
+			_InvalidSetValue : 402,
+			_ElementIsReadOnly : 403,
+			_ElementIsWriteOnly : 404,
+			_IncorrectDataType : 405
+		},
+		_getAPI: function(){
+			var theAPI = this._findAPI(window);
+			if (theAPI == null){
+				var opwin = window.top.opener;
+				while ((theAPI == null) && (opwin != null) && (typeof(opwin) != "undefined")){
+					theAPI = this._findAPI(opwin);
+					opwin = opwin.top.opener;		  
+				}
+			}
+			if (theAPI == null) {
+				if( this._debbug ) this._log("error", "Unable to find an API adapter");
+			}
+			return theAPI;
+		},
+		_findAPI: function( win ){
+			var findAPITries = 0;
+			while ((win.API == null) && (win.parent != null) && (win.parent != win))  {
+				findAPITries++;      
+				
+				// Note: 10 is an arbitrary number, but should be more than sufficient
+				if (findAPITries > 20) {
+					if( this._debbug ) this._log("error","Error finding API -- too deeply nested.");
+					return null;
+				}
+				
+				win = win.parent;
+			}     
+			this._apiWin = win;
+			return win.API;
+		},
+		_doLMSInitialize: function( callback ){
+			var self = this;
+
+			if( this._conCount >= this._conCountLimit ){
+				if( callback ){ callback( this, false ) };
+				return "false";
+			}
+
+			if ( !this.api ) {
+				if( this._debbug ) this._log("error","Unable to locate the LMS's API Implementation.\nLMSInitialize was not successful.");
+				this._conCount++;
+				if( callback ){ callback( this, false ) };
+				if( this._conCount < this._conCountLimit ) setTimeout( function(){ self._doLMSInitialize( callback ); }, this._conTryDelay );
+				return "false";
+			};
+
+			var result = this.api.LMSInitialize("");
+			if (result.toString() != "true") {
+				var err = this._ErrorHandler();
+				if( this._debbug ) this._log(" error", err );			
+				this._conCount++;
+				if( callback ){ callback( this, false ) };
+				if( this._conCount < this._conCountLimit ) setTimeout( function(){ self._doLMSInitialize( callback ); }, this._conTryDelay );
+				return result.toString();
+			}
+
+			this._status = true;
+			if( callback ){ callback( this, true ) };
+			return result.toString();
+		},
+		_doLMSFinish: function(){
+			if ( this.api == null ) {
+				if( this._debbug ) this._log("error","Unable to locate the LMS's API Implementation.\nLMSFinish was not successful.");
+				return "false";
+			} else {
+				var result = this.api.LMSFinish("");
+				if (result.toString() != "true")
+				{
+					if( this._debbug ) this._log("error", "LMSFinish() failed.");
+					var err = this._ErrorHandler();
+				}else{
+					if( this._debbug ) this._log("log", "LMSFinish() success.");
+				}
+			}
+			return result.toString();
+		},
+		_doLMSGetValue: function( name ){			
+			if( this._useLocalcache && this.status == 'offline' ){
+				return this._localCache.get( name );
+			};
+
+			if ( !this.api ) {
+				if( this._debbug )this._log("error","Unable to locate the LMS's API Implementation.\nLMSGetValue was not successful.");
+				return "";
+			} else {
+				var value = this.api.LMSGetValue(name);
+				var errCode = this.api.LMSGetLastError().toString();
+				if ( errCode != this._erros._NoError.toString() ) {
+					// an error was encountered so display the error description
+					var errDescription = this.api.LMSGetErrorString(errCode);
+					if( this._debbug ) this._log("error","LMSGetValue("+name+") failed. \n"+ errDescription);
+					return "";
+				} else {
+					if( this._useLocalcache ) this._localCache.set( name, value.toString() );
+					return value.toString();
+				}
+			}
+		},
+		_doLMSSetValue: function( name, value ){			
+			if( this._useLocalcache && this.status == 'offline' ){	
+				this._localCache.set( name, value.toString() );
+				return;
+			};
+
+			if ( !this.api ){
+				if( this._debbug ) this._log("error","Unable to locate the LMS's API Implementation.\nLMSSetValue was not successful.");
+				return;
+			} else {
+				var result = this.api.LMSSetValue( name, value );
+				if (result.toString() != "true")
+				{
+					var err = this._ErrorHandler();
+				}else{
+					if( this._useLocalcache ) this._localCache.set( name, value.toString() );
+				}
+			}
+
+			return;
+		},
+		_doLMSCommit: function(){
+			if ( !this.api ) {
+				if( this._debbug ) this._log("error","Unable to locate the LMS's API Implementation.\nLMSCommit was not successful.");
+				return "false";
+			}
+			else
+			{
+				var result = this.api.LMSCommit("");
+				if (result != "true")
+				{
+					var err = this._ErrorHandler();
+				}
+			}
+
+			return result.toString();
+		},
+		_doLMSGetLastError: function(){
+			if ( this.api == null)
+			{
+				if( this._debbug ) this._log("error","Unable to locate the LMS's API Implementation.\nLMSGetLastError was not successful.");
+				//since we can't get the error code from the LMS, return a general error
+				return _GeneralError;
+			}
+
+			return this.api.LMSGetLastError().toString();
+		},
+		_doLMSGetErrorString: function(errorCode){
+			if ( this.api == null)
+			{
+				if( this._debbug ) this._log("error", "Unable to locate the LMS's API Implementation.\nLMSGetErrorString was not successful.");
+			}
+
+			return this.api.LMSGetErrorString(errorCode).toString();
+		},
+		_LMSIsInitialized: function( callback ){
+			// there is no direct method for determining if the LMS API is initialized
+			// for example an LMSIsInitialized function defined on the API so we'll try
+			// a simple LMSGetValue and trap for the LMS Not Initialized Error
+
+			//this.api = this._getAPIHandle();
+			if ( this.api == null)
+			{
+				if( this._debbug ) this._log("error", "Unable to locate the LMS's API Implementation.\nLMSIsInitialized() failed.");
+				return false;
+			}
+			else
+			{
+				var value = this.api.LMSGetValue("cmi.core.student_name");
+				var errCode = this.api.LMSGetLastError().toString();
+				if (errCode == this._erros._NotInitialized)
+				{
+					if( this._debbug ) this._log("error", "LMSIsInitialized() failed.");
+					this._status = false;
+					return false;
+				}
+				else
+				{
+					if( this._debbug ) this._log("log", "LMSIsInitialized() success.");
+					this._status = true;
+					if( callback ){ callback( this, true ) };
+					return true;
+				}
+			}
+		},
+		_ErrorHandler: function (){
+			if ( this.api == null)
+			{
+				if( this._debbug ) this._log("error", "Unable to locate the LMS's API Implementation.\nCannot determine LMS error code.");
+				return;
+			}
+
+			// check for errors caused by or from the LMS
+			var errCode = this.api.LMSGetLastError().toString();
+			if ( errCode != this._erros._NoError.toString() )
+			{
+				// an error was encountered so display the error description
+				var errDescription = this.api.LMSGetErrorString(errCode);
+
+				/*if (_Debug == true)
+				{
+					errDescription += "\n";
+					errDescription += api.LMSGetDiagnostic(null);
+					// by passing null to LMSGetDiagnostic, we get any available diagnostics
+					// on the previous error.
+				}*/
+
+				console.log(errDescription);
+			}
+
+			return errCode;
+		},
+		_getAPIHandle: function(){
+			if ( this.api == null)
+			{
+				this.api = this._getAPI();
+			}
+
+			return this.api;
+		},
+		// Internal methods
+		_log: function( type ){
+			( type || ( type = "log" ) );
+			var args = ( arguments.length === 1 ? [arguments[0]] : Array.apply(null, arguments));
+				args = ( args.length > 1 )? args.slice( 1 ) : args ;
+
+			if( !args.length ) return;
+
+			if( this.logs ) this.logs( type, args ); // LOGS need be declared by the parent
+		},
+		_suspendStringify: function( obj ){ // data to stringv
+			var self = this;
+			var ret = [];
+			// loop the base
+			_.each( obj, function(v,k,l){
+				switch( true ){
+					case ( _.isFunction(v) ): break;		
+					case ( v instanceof ScormSuspendArray )		: v = v.get();
+					case ( _.isArray(v)  && _.filter(v, function(num, key){ return ( num%1 !== 0 ||  num > 0 || num < 10 ); }).length > 0 ) 	:  
+																  ret.push( k +">"+v.join(','));
+						break;
+					case ( _.isArray(v) )						: ret.push( k +"<"+_.map(v, function(num, key){ return num ? num : 0; }).join('')); break;
+					case ( _.isObject(v) &&  _.size(v) > 0 ) 	: ret.push( k +"="+ self._suspendStringify( v )); break;	
+					case ( _.isBoolean(v) )						: ret.push( k +"="+(v?1:0) );	break;			
+					case (	!(v) )								: break;		
+					default 									: ret.push( k +"="+v.toString());	break;
+				};
+			});
+			ret = ret.join('&');
+			if( ret.length > this._suspendDataLimit ){ this._log("error", "String de dados maior que o limite permitido ("+ this._suspendDataLimit +")", ret ); return false; }
+			return ret;
+		},
+		_suspendParse: function( string ){ // string to data
+			if( !string ) return {};
+			var self = this;
+			var ret = {};
+
+			var propriedades = string.split('&');
+			for (var i = propriedades.length - 1; i >= 0; i--) {
+				var par = propriedades[i].split(/([<>=])/);
+				var value;
+				switch( par[1] ){
+					case '=': value = par[2]; value = (!isNaN(par[2]))?parseFloat(par[2]):par[2];  	break;
+					case '>': value = par[2].split(',');	break;
+					case '<': value = par[2].split('');		break;
+				}
+
+				ret[par[0]] = value || false;
+			};
+
+			return ret;
+		},
+		_fromSuspend: function(){
+			var st = ( this._doLMSGetValue("cmi.suspend_data") || ( this._localCache.load()["cmi.suspend_data"] ) || "" );
+
+			var suspend = this._suspendParse( st );
+	
+			return suspend;		
+		},
+		_toSuspend: function( suspend ){
+			/*var suspend = {};
+			suspend.v = data.visited || [];
+			suspend.e = data.result|| [];
+			suspend.m = data.bookmark.max || 0;
+			suspend.t = data.pages_count || 0;*/
+
+			var st = this._suspendStringify(suspend);
+			//data.suspend_data = st;
+			return ( st && ( this._doLMSSetValue("cmi.suspend_data", st) || this.save() ) ); 
+		},
+		// Internal cache
+		_localCache: {
+			data:{},
+			defaults:{},
+			_key: false,
+			key: function () {
+				if (!this._key) this.init();
+				return this._key;
+			},
+			init: function () {
+				this._key = ('scormCache' + uniqueUrlKey( con._shareScormAtFolder ) );
+			},
+			get: function ( key ) {				
+				return ( key == undefined )? this.data : this.data[ key ];
+			},
+			set: function ( key, value ) {
+				this.data[ key ] = value;
+				localStorage.setItem( this.key() , JSON.stringify( this.data ) );
+				return this;
+			},
+			load: function (){
+				this.data = JSON.parse( localStorage.getItem( this.key() ) || "{}" );
+				for( var prop in this.defaults ){
+					if( this.data[prop] == undefined || ( this.data[prop] == "" && ( this.defaults[prop] ) ) ) this.data[prop] = this.defaults[ prop ];
+				}
+				return this.data;
+			},
+			reset: function (){
+				localStorage.removeItem( this.key() );
+			},
+			has: function(){
+				return ( JSON.stringify(this.data) !== JSON.stringify({}) ) || ( localStorage.getItem( this.key() ) );
+			},
+		},
+		// Public METHOD
+		setCacheDefault: function( data, rewrite ){
+			for( var prop in data ){
+				if( this._localCache.defaults[prop] == undefined || rewrite ){
+					if( 
+						prop == 'cmi.suspend_data' && 
+						(
+							typeof data[prop] == 'object' ||
+							typeof data[prop] == 'array' 
+						)
+					){ 
+						data[prop] = this._suspendStringify( data[prop] );
+					}
+					this._localCache.defaults[prop] = data[ prop ];
+				}
+			};
+			localStorage.setItem( this._localCache.key() , JSON.stringify( this._localCache.load() ) );
+		},
+		publishToTop: function( scorm ){
+			if( this._apiWin ) this._apiWin.scorm = scorm;
+		},
+		init: function( callback ){
+			Object.defineProperty(this, "api", {
+				get: function() { 
+					return this._api || ( this._api = this._getAPI() ); 
+				},
+				set: function(newValue) { return this.api; }
+			});
+			Object.defineProperty(this, "status", {
+				get: function() { 
+					return this._status ? 'online' : this._conCount < this._conCountLimit ? 'booting' : 'offline' ; 
+				},
+				set: function( newValue ) { return this._status = ( newValue === true || newValue === 'online' ); }
+			});
+
+			//this._localCache.key = ('scormCache' + uniqueUrlKey( this._shareScormAtFolder ) );
+			this._localCache.load();
+
+			return this._LMSIsInitialized( callback ) || ( this._doLMSInitialize && this._doLMSInitialize( callback ) !== "false" && ( this ) );
+		},
+		save: function(){
+			var self = this;
+			if( this._delay ) clearTimeout( this._delay );
+			this._delay = setTimeout(function(){
+				self._doLMSCommit();
+			},50);
+		}
+	};
+
+	var validator = {
+		int: function( value, min, max ){
+			if( value === 0 || parseInt( value ) ){
+				( min !== undefined || ( min = -Number.MAX_VALUE ) );
+				( max !== undefined || ( max = Number.MAX_VALUE ) );
+				if( value < min ){ console.error( "This value must be higher than or equal to ", min ); return false;}
+				if( value > max ){ console.error( "This value must be lower than or equal to ", max ); return false;}
+				return true;
+			}else{
+				console.error( "This value must be interger ", '"',   value, '"' );
+				return false;
+			}
+		},
+		decimal: function( value ){
+
+		},
+		string: function( value, limit ){
+			if( value.length <= limit ){
+				return true;
+			}else{
+				console.error( "This value must have less than ", limit , ' characters "',   value, '"' );
+				return false;
+			}			
+		},
+		bool: function( value ){
+			switch( value ){
+				case true:
+				case 'true':
+				case '1':
+				case 1:
+					return 1;
+					break;
+				case false:
+				case 'false':
+				case '0':
+				case 0:
+					return 0;					
+					break;
+				default:
+					console.error( "This value must be a boolean." );
+					return undefined;
+					break;
+			}
+		}
+	}
+
+	//
+	// ======
+
+	var ScormStudent = function(){
+		Object.defineProperty(this, 'name', {
+			get: function() { return con._doLMSGetValue('cmi.core.student_name'); },
+		});
+		Object.defineProperty(this, 'id', {
+			get: function() { return con._doLMSGetValue('cmi.core.student_id'); },
+		});
+		Object.defineProperty(this, 'audio', {
+			get: function() { return con._doLMSGetValue('cmi.student_preference.audio'); },
+			set: function(newValue) {
+				if( !validator.int( newValue, 0, 100 ) ) return false;
+				con._doLMSSetValue('cmi.student_preference.audio', parseInt( newValue ) ); 
+				con.save();
+				return this;
+			}
+		});
+		Object.defineProperty(this, 'language', {
+			get: function() { return con._doLMSGetValue('cmi.student_preference.language'); },
+			set: function(newValue) {
+				if( !validator.string( newValue, 255 ) ) return false;
+				con._doLMSSetValue('cmi.student_preference.language', newValue); 
+				con.save();
+				return this;
+			}
+		});
+		Object.defineProperty(this, 'speed', {
+			get: function() { return con._doLMSGetValue('cmi.student_preference.speed'); },
+			set: function(newValue) {
+				if( !validator.int( newValue, 0, 100 ) ) return false;
+				con._doLMSSetValue('cmi.student_preference.speed', parseInt( newValue ) ); 
+				con.save();
+				return this;
+			}
+		});
+		Object.defineProperty(this, 'text', {
+			get: function() { return con._doLMSGetValue('cmi.student_preference.text'); },
+			set: function(newValue) {
+				newValue = validator.bool( newValue );
+				if( newValue == undefined ) return false;
+				con._doLMSSetValue('cmi.student_preference.text', newValue ); 
+				con.save();
+				return this;
+			}
+		});
+	};
+
+	var ScormScore = function(){
+		Object.defineProperty(this, 'raw', {
+			get: function() { return con._doLMSGetValue('cmi.core.score.raw'); },
+			set: function(newValue) { 
+				con._doLMSSetValue('cmi.core.score.raw', newValue); 
+				con.save();
+				return this;
+			}
+		});
+		Object.defineProperty(this, 'max', {
+			get: function() { return con._doLMSGetValue('cmi.core.score.max'); },
+			set: function(newValue) { 
+				con._doLMSSetValue('cmi.core.score.max', newValue); 
+				con.save();
+				return this;
+			}
+		});
+		Object.defineProperty(this, 'min', {
+			get: function() { return con._doLMSGetValue('cmi.core.score.min'); },
+			set: function(newValue) { 
+				con._doLMSSetValue('cmi.core.score.min', newValue); 
+				con.save();
+				return this;
+			}
+		});
+	};
+
+	var ScormLesson = function(){
+		Object.defineProperty(this, 'mode', {
+			get: function() { return con._doLMSGetValue('cmi.core.lesson_mode'); },
+		});
+		Object.defineProperty(this, 'credit', {
+			get: function() { return con._doLMSGetValue('cmi.core.credit'); },
+		});
+		Object.defineProperty(this, 'status', {
+			get: function() { return ( con._doLMSGetValue('cmi.core.lesson_status') || 'not attempted'); },
+			set: function(newValue) { 
+				if( (['completed','incomplete','passed','failed','browsed','not attempted']).indexOf( newValue ) == -1 ){
+					console.error( newValue, 'is not a valid value.' );
+					return false;
+				}
+				con._doLMSSetValue('cmi.core.lesson_status', newValue);
+				con.save();
+				return this;
+			},
+			enumerable: false,
+			configurable: false
+		});
+		Object.defineProperty(this, 'location', {
+			get: function() { return con._doLMSGetValue('cmi.core.lesson_location'); },
+			set: function(newValue) { 
+				con._doLMSSetValue('cmi.core.lesson_location', newValue); 
+				con.save();
+				return this;
+			},
+			enumerable: false,
+			configurable: false
+		});
+	};
+
+	var ScormNav = function(){
+		//this.set
+	};
+
+	var ScormRoot = function(){
+
+		/* PRIVATE VARS
+		*/
+
+		var self = this;
+		this._startTime = ( new Date() ).getTime();
+		this._suspendData = {};
+		this._publishToTop = false;
+		this._autoFinish = true;
+		this._con = con;
+
+		this._debbug = false;
+		this.student = new ScormStudent();
+		this.lesson = new ScormLesson();
+		this.score = new ScormScore();
+		this.nav = new ScormNav();
+
+		/* PUBLIC VARS
+		*/
+
+		Object.defineProperty(this, 'launch_data', {
+			get: function() { return con._doLMSGetValue('cmi.launch_data'); },
+		});
+
+		Object.defineProperty(this, 'location', {
+			get: function() { return con._doLMSGetValue('cmi.core.lesson_location'); },
+			set: function(newValue) { 
+				con._doLMSSetValue('cmi.core.lesson_location', newValue); 
+				con.save();
+				return this;
+			}
+		});
+
+		Object.defineProperty(this, 'time', {
+			get: function() { return con._doLMSGetValue('cmi.core.total_time') || this.updateTime(); },
+		});
+
+		Object.defineProperty(this, 'status', {
+			get: function() { return con.status; },
+		});
+
+		Object.defineProperty(this, 'debbug', {
+			get: function() { return this._debbug; },
+			set: function( value ){
+				switch( value ){
+					case 'all':
+					case true:
+					case 'true':
+						this._debbug = true;
+						con._debbug = true;
+					break;
+					case 'none':
+					case false:
+					case 'false':
+						this._debbug = false;
+						con._debbug = false;
+					break;
+					case 'root':
+						this._debbug = true;
+						con._debbug = false;
+					break;
+					case 'connection':
+						this._debbug = false;
+						con._debbug = true;
+					break;
+				};
+			}
+		});
+
+		// Con HUB
+
+		Object.defineProperty(this, 'useLocalcache', {
+			get: function() { return this._con._useLocalcache; },
+			set: function(newValue) { this._con._useLocalcache = newValue;	}
+		});
+
+		/* PUBLIC METHODS
+		*/
+
+		this.updateTime = function(){
+			var sec = ( ( new Date() ).getTime() - this._startTime ) / 1000;
+
+			var s = Math.floor( sec % 60 );
+			var m = Math.floor( ( sec % ( 60 * 60 ) ) / 60 );
+			var h = Math.floor( ( sec % ( 60 * 60 * 60 ) ) / ( 60 * 60 ) );
+
+			var t = ( h < 10 ? "0" + h : h ) + ":" + ( m < 10 ? "0" + m : m ) + ":" + ( s < 10 ? "0" + s : s );
+
+			con._doLMSSetValue('cmi.core.session_time', ( t ) );
+			con.save();
+			return t;
+		};
+
+		this.quit = function(){
+			con._doLMSFinish();
+		};
+
+		this.setCacheDefault = function( command ){
+			if( command == 'reset' ){
+				return con._localCache.reset();
+			}
+			con.setCacheDefault.apply( con, arguments );
+		};
+
+		this.hasCacheDefault = function(){
+			return con._localCache.has();
+		};
+
+		// Con HUB
+
+		this.publishToTop = function(){
+			self._con.publishToTop( self );
+		};
+
+		// COM extends
+
+		this._con.logs = function( type, args ){
+			switch( type ){
+				case 'warn':
+					console.warn.apply(console, args );
+					self.emit('warn', args);
+				break;
+				case 'error':
+					console.error.apply(console, args );
+					self.emit('error', args);
+				break;
+				default:
+					console.log.apply(console, args );
+					self.emit('log', args);
+				break;
+			};
+		};
+	};
+
+	ScormRoot.prototype.connect = function(){
+		var self = this;
+
+		var loadSuspend = function(){			
+			var s = self._con._fromSuspend();
+			for( var p in s ){
+				self.newField( p, s[ p ] );
+			};
+		}
+
+		con.init(function( con, result ){
+			if( con.status == "offline"){
+				loadSuspend();
+				self.emit('connection.fail', [con, this]);
+				if( self._debbug ) console.log( "Scorm connected, ", con._conCount, con.status );
+			} else if ( con.status == "online" ){
+				if( self._publishToTop ) self.publishToTop();
+				if( self._autoFinish ) {
+					window.onunload = function(){
+						self.quit();
+					};
+				}
+				loadSuspend();
+				self.emit('connection.success', [con, this]);
+			} else {
+				self.emit('connection.trying', [con, this]);
+				if( self._debbug ) console.warn( con._conCount,' api connection try', con.status );
+			};
+			self.emit('connection.always', [con, this]);
+		});				
+	};
+
+	ScormRoot.prototype.onConnection = function( callback ){
+		if( framework.scorm.status == 'booting' ){
+			scorm.on('connection.success connection.fail', callback );
+		}else{
+			callback( con, this );
+		}
+	}
+
+	// suspend data mask
+	ScormRoot.prototype.newField = function( name, values ){
+		if( this[ name ] ){ console.error( 'You cannot redeclare this property.', name ); return undefined; };
+		if( name.length > 4 ){ console.warn( 'This field has limited size. Avoid use long names.', name ); };
+
+		this[ name ] = undefined;
+		if( values ){
+			if( (['array','object']).indexOf(( typeof values ).toLowerCase()) > -1 ){
+				//this[ name ] = ;
+				Object.defineProperty(this, name, {
+					get: function() { return this._suspendData[ name ]; },
+					//set: function(newValue) { this._con._useLocalcache = newValue;	}
+				});
+				this._suspendData[ name ] = new ScormSuspendArray( values );
+				this[ name ].parent = this;
+				return this._suspendData[ name ];
+			} else{
+				Object.defineProperty(this, name, {
+					get: function() { return this._suspendData[ name ]; },
+					set: function(newValue) { 
+						this._suspendData[ name ] = newValue;
+						this._con._toSuspend( this._suspendData );
+					}
+				});
+				this._suspendData[ name ] = values;
+				return values;
+			}
+		};
+
+		return this[ name ];
+	};
+
+	var ScormSuspendArray = function( startValues ){
+		var values = new Array();
+
+		if( _.isArray(startValues) ){
+			values = startValues;
+		}else if( _.isObject( startValues ) ){			
+			for( var p in startValues ){
+				if( startValues.hasOwnProperty( p ) ) {
+					values.push( startValues[p].toString() );
+				}
+			}; 
+		}else{
+			values.push( values.toString() );
+		}
+
+		/*
+		this.fill = 	function( amount, value, replace ){
+			for (var i = 0; i < amount; i++) {
+				if( values.length-1 < i || replace ) values[ i ] = value;
+			}
+			this.parent._con._toSuspend( this.parent._suspendData );
+			return this;
+		};*/
+		this.complete = function( amount, value, replace ){
+			for (var i = 0; i < amount; i++) {
+				if( values[ i ] == undefined || replace ) values[ i ] = value;
+			}
+			this.parent._con._toSuspend( this.parent._suspendData );
+			return this;
+		};
+		this.set =	function( index, value ){
+			( value !== undefined || ( ( value = index ) && ( index = values.length ) ) );
+
+			values[ index ] = value;
+			this.parent._con._toSuspend( this.parent._suspendData );
+			return value;
+		};
+		this.get =	function( index, defaults ){
+			return index == undefined ? values : values[ index ] ? values[ index ] : defaults ;
+		};
+		this.filter = 		function( fn ){
+			return values.filter( fn ) ;
+		};
+
+		this.isFull =	function() {
+			return values.filter(function(v){
+				return ( v==0 || v==undefined || v==null )
+			}).length==0;
+		}
+		this.isEmpty =	function() {
+			return !this.isFull();
+		}
+
+		Object.defineProperty(this, 'length', {
+			get: function() { return values.length; },
+		});
+	};
+
+	// métodos de classes
+	ScormRoot.prototype.on = function( type, listener ){
+		(this._listeners || ( this._listeners = {} ));
+
+		var events = type.split(" ");
+		for (var i = events.length - 1; i >= 0; i--) {			
+			if (typeof this._listeners[events[i]] == "undefined"){
+				this._listeners[events[i]] = [];
+			};
+			this._listeners[events[i]].push(listener);			
+		};		
+	};
+	ScormRoot.prototype.emit = function( events ){
+		(this._listeners || ( this._listeners = {} ));		
+
+		var eventsList = [];
+		if (typeof events == "string"){
+			var eventsKeys = events.split(" ");
+			for (var i = eventsKeys.length - 1; i >= 0; i--) {
+				eventsList.push( { type: eventsKeys[i] } );
+			};
+			//event = { type: event };
+		}
+
+		if (typeof events == "object"){
+			eventsList = [ events ];
+		}
+
+		for (var k = eventsList.length - 1; k >= 0; k--) {
+			var event = eventsList[k];
+		
+			if ( !event.target ){
+				event.target = this;
+			}
+
+			if ( !event.type ){  //falsy
+				throw new Error("Event object missing 'type' property.");
+			}
+
+			if (this._listeners[event.type] instanceof Array){
+				var listeners = this._listeners[event.type];
+				for (var i=0, len=listeners.length; i < len; i++){
+					switch( arguments.length ){            		
+						case 2:  listeners[i].call(this, event, arguments[1]); break;
+						case 3:  listeners[i].call(this, event, arguments[1], arguments[2]); break;
+						case 4:  listeners[i].call(this, event, arguments[1], arguments[2], arguments[3]); break;
+						case 5:  listeners[i].call(this, event, arguments[1], arguments[2], arguments[3], arguments[4]); break;
+						case 1:
+						default: listeners[i].call(this, event); break;
+					};                
+				};
+			}
+
+		};
+	};
+	ScormRoot.prototype.off = function( type, listener ){
+		(this._listeners || ( this._listeners = {} ));		
+
+		if(!type){
+			types = [];
+			for(var k in this._listeners) types.push(k);
+		}else{
+			types = [type];
+		}
+		for (var j = types.length - 1; j >= 0; j--) {
+			var type = types[j];
+			if (this._listeners[type] instanceof Array){
+				var listeners = this._listeners[type];
+				for (var i=0, len=listeners.length; i < len; i++){
+					if (listeners[i] === listener || !listener){
+						listeners.splice(i, 1);
+						break;
+					}
+				}
+			}			
+		};
+	};
+
+	// AMD registration happens at the end for compatibility with AMD loaders
+	// that may not enforce next-turn semantics on modules. Even though general
+	// practice for AMD registration is to be anonymous, underscore registers
+	// as a named module because, like jQuery, it is a base library that is
+	// popular enough to be bundled in a third party lib, but not be part of
+	// an AMD load request. Those cases could generate an error when an
+	// anonymous define() is called outside of a loader request.
+	if (typeof define === 'function' && define.amd) {
+		define(function() {
+		  return ScormRoot;
+		});
+	}else{
+		root.scorm = new ScormRoot();
+		/*con.init(function( con, result ){
+			if( result || con.status == "offline"){
+				root.scorm = new ScormRoot();
+			}else{
+				console.warn( con._conCount,' api connection try', con.status );
+			}
+			
+		});		*/
+	};
+
+})(this);

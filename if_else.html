@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>js4_condicionamento</title>
+<meta http-equiv="Content-Type" content="text/html; ">
+<meta charset="utf-8"/>
+</head>
+<body>
+    <script lang="javascript">
+        //Objetivo é ler dois valores e independente da ordem digitados, mostrar o maior para o menor. 
+        //Será necessário 3 variáveis
+
+        //Variáveis
+        var valor1;
+        var valor2;
+        var valor3;
+
+        //Entrada de dados
+        valor1 = parseInt(window.prompt('Informe um  número inteiro','00'));//Esse segundo 00 é o que vai ser mostrado na caixa de digitação
+        valor2 = parseInt(window.prompt('Informe um segundo número inteiro','00'));
+
+        //Saída de dados
+        document.write('O primeiro número digitado é ' + valor1);
+        document.write('<br>O segundo número digitado é ' + valor2);
+
+        //Condição e organização dos números
+        if(valor1 > valor2)
+        {
+            document.write('<p><b>O primeiro é maior que o segundo</b>' + valor1 + ' e ' + valor2);
+        }
+        else
+        {
+            document.write('<p><b>O segundo é maior que o primeiro </b>' + valor2 + ' e ' + valor1);
+        }
+
+        
+
+    </script>
+</body>
+</html>
+
+

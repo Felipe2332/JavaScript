@@ -1,0 +1,549 @@
+/*/
+	*	FrameworkFGV - Adaptação para Instituto Albert Einstein - Versão 1.5 
+	*
+/*/
+
+if( (/^((sv)|(cl)|(ead))(.*)fgv\.br/gi).test(document.domain ) ) document.domain = "fgv.br";
+
+( framework_url || ( framework_url = './' ) );
+
+// Pacotes de JS a serem importados sobre demanda
+require_packages = {
+	'default':{
+		// Pasta raiz dos JS
+	    baseUrl: framework_url + 'js/',
+	    // Acaptador para js não "define()"
+	    shim: {
+	    	// JQuery plugins
+	    	jq_address:{
+	    		//deps: 		[]
+	    	},
+	    	jquery_ui:{
+	    		deps: 		[],
+	    	},
+	    	jq_equalheight:{
+	    		deps: 		[]
+	    	},
+	    	jq_matchheight:{
+	    		deps: 		[]
+	    	},
+	    	jq_easing:{
+	    		//deps: 		[], 
+	    	},
+	    	jq_booklet:{
+	    		//deps: 		[jq_easing"], 
+	    	},
+	    	jq_jqzoom:{
+	    		//deps: 		[], 
+	    	}, 
+	    	jq_resphtmlmaps: {
+	    		//deps: 		[],
+	    	},
+	    	jq_lightbox:{
+	    		//deps: 		[]
+	    	},
+	    	jq_autotab: {
+	    		/*deps: 		[jquery_ui']*/
+	    	},
+			// FGV
+			/**/
+			simulado:{
+				deps:		['sim_multiplas','hash']
+			},			
+			sim_multiplas:{
+				deps:		[],
+			},
+			tela:{
+				deps: 		['jq_matchheight','jq_equalheight','bootstrap','bot_tabcollapse']
+			},
+			// D3
+	        d3: {
+	            exports: 'd3'
+	        },		    
+	    	// CANVAS 1.0
+	    	easel: {
+	            exports: 	'createjs'
+	        },
+	        tween: {
+	            deps: 		['easel'],
+	            exports: 	'Tween'
+	        },
+	        movieclip: {
+	        	deps: 		['easel','tween'],
+	            exports: 	'movieclip'
+	        },
+	        // BOOTSTRAP
+	        bootstrap : { 
+	        	deps : 		[]
+	        },
+	        bot_tabcollapse : {
+	        	deps: 		[]
+	        },
+	        // ETC 
+	        modernizr : {
+	        	exports: "Modernizr"
+	        },
+	        browserDetect : {
+	        	exports: 'detect'
+	        }
+	        //
+	    },
+	    // shortcuts
+	    paths: {
+	    	// CORE 		
+	    	text 			: 'basics_libs/text',
+	    	lodash 			: 'basics_libs/lodash',
+	    	domReady 		: 'basics_libs/domReady',
+	    	// JQUERY
+	        jquery2 		: 'jquery/jquery',
+	        jquery_ui 		: 'jquery/jquery-ui',  
+	        jq_equalheight  : 'jquery/jquery.equalheight',
+	        jq_matchheight  : 'jquery/jquery.matchHeight',
+			jq_autotab		: 'jquery/jquery.autotab.min',
+			jq_jqzoom		: 'jquery/jquery.jqzoom-core',
+			jq_easing		: 'jquery/jquery.easing.1.3',
+			jq_until		: 'jquery/jquery.until.0.1',
+			jq_booklet		: 'jquery/jquery.booklet.latest',
+			jq_resphtmlmaps : 'jquery/jquery.rwdImageMaps.min',
+			jq_lightbox		: 'jquery/jquerymagnificpopupmin',
+			jq_mousewheel	: 'jquery/jquery.mousewheel.min',
+	        // CANVAS 
+	        easel 			: 'canvas/easeljs-0.8.0.min',
+	        tween 			: 'canvas/tweenjs-0.6.0.min',
+	        movieclip 		: 'canvas/movieclip-0.8.0.min',	 
+	        preloadjs 		: 'canvas/preloadjs-0.6.0.min',	
+	        // SVG TREE 	
+	        mapaconceitual 	: 'tree/map',
+	        d3 		 		: 'tree/d3.v3',
+	        dndTree 		: 'tree/dndTree',
+	        // FGV
+	        personagem 		: 'fgv/fgv.personagem',
+	        autoavaliacao 	: 'fgv/fgv.autoavaliacao.1.1',
+	        questionario 	: 'fgv/fgv.autoavaliacao-2.0.apply',
+	        questionario_lib: 'fgv/fgv.autoavaliacao-2.0',
+	        //autoavaliacao 	: 'fgv/fgv.autoavaliacao',
+	        simulado 		: 'fgv/fgv.simulado',
+	        sim_multiplas	: 'fgv/fgv.simulado.multiplaescolha',
+	        hq				: 'fgv/fgv.hq-1.0',
+	        supertooltip	: 'fgv/fgv.supertooltip',
+	        css_three		: 'fgv/fgv.css_three',
+	        tela			: 'fgv/fgv.tela',
+	        nm_ui			: 'fgv/fgv.nm-ui.1.0',
+	        nm_animations	: 'fgv/fgv.nm-animations.0.1',
+	        nm_nav			: 'fgv/fgv.nm-nav',
+	        scorm 			: 'fgv/fgv.scorm.1.0',
+	        // BOOTSTRAP
+	        bootstrap 		: "bootstrap/bootstrap",
+	        bot_tabcollapse : "bootstrap/bootstrap-tabcollapse",
+	        // ANOTHERS LIBS
+	        html5ext		: "etc/html5ext",
+	        jit_yc			: "etc/jit-yc",
+	        modernizr		: "etc/modernizr.custom",
+	        simpleZoom		: "etc/simpleZoom",
+	        snapSVG			: "etc/snap.svg-min",
+	        browserDetect	: "etc/detect.min",
+	        hash			: "etc/hash",
+	        seedrandom		: "etc/seedrandom",
+	        // JOGOS
+	        nm_jogos 		: "jogos/js/fgv.games",
+	        fastclick 		: "jogos/js/fastclick",
+	    },
+	    waitSeconds : 30
+	},/*
+	nm_ui : {
+		'default':{
+			config:{
+				context: "nm_ui",
+				 shim: {
+			    	// JQuery plugins
+			    	hq:{
+			    		deps: 		[snapSVG']
+			    	},
+			    }
+			}
+		}
+	},*/
+	nm_nav : {
+		'default':{
+			config:{
+				context: "nm_nav",
+				shim: {
+			        'bootstrap' : { /*deps: ['']*/ }
+			    }
+			},			
+		}
+	},/*
+	nm_jogos : {
+		'default':{
+			config:{
+				context: "nm_jogos",
+				shim: {
+			    	// JQuery plugins
+			        bootstrap : { 
+			        	deps   : [],
+			        	exports: '$'
+			        },
+			    	fastclick:{
+			    		exports : "FastClick"
+			    	},
+			    }
+			}
+		}
+	},*/
+	jq_lightbox : {
+		'default':{
+			config:{
+				context: "nm_lightbox",
+			}
+		}
+	},/*
+	simulado : {
+		'default':{
+			config:{
+				context: "simulado",
+			}
+		}
+	},*/
+	/*autoavaliacao : {
+		'default':{
+			config:{
+				context: "autoavaliacao",
+				shim: {
+			    	jquery_ui:{
+			    		deps: 		[]
+			    	},
+			    	jq_autotab: {
+			    		deps: 		[]
+			    	},
+			    }
+			}
+		}
+	},*/
+	hq : {
+		'default':{
+			config:{
+				context: "hq-default",
+			}
+		}
+	},
+	mapaconceitual : {
+		'default':{
+			config:{
+				context: "mapaconceitual",
+			}
+		}
+	},
+	personagem : {
+		'default':{
+			config:{
+				context: "personagem",
+				shim: {					
+			    	// CANVAS 1.0
+			    	easel: {
+			            exports 	: 'createjs'
+			        },
+			        tween: {
+			            deps 		: ['easel'],
+			            exports 	: 'Tween'
+			        },
+			        movieclip: {
+			        	deps 		: ['easel','tween'],
+			            exports 	: 'movieclip'
+			        }
+			    },
+				paths:{	
+					// CORE 		
+			    	text 			: 'basics_libs/text',
+			    	lodash 			: 'basics_libs/lodash',
+			    	domReady 		: 'basics_libs/domReady',
+					//jquery 			: 'jquery/jquery-2.1.3.min',
+					easel 			: 'canvas/easeljs-0.8.0.min',
+					tween 			: 'canvas/tweenjs-0.6.0.min',
+					movieclip 		: 'canvas/movieclip-0.8.0.min', 
+	     			preloadjs 		: 'canvas/preloadjs-0.6.0.min',	
+					personagem 		: 'fgv/fgv.personagem.1.1',
+				},
+			}
+		},
+		'05.05.03':{
+			config:{
+				context: 	"personagem_05_05_03",
+				shim: {
+					'easel-050': {
+			            exports 	: 'createjs'
+			        },
+			        'tween-030': {
+			            deps 		: ['easel-050'],
+			            exports 	: 'createjs'
+			        },
+			        'movieclip-050': {
+			        	deps 		: ['easel-050','tween-030'],
+			            exports 	: 'createjs'
+			        },
+		        },
+				paths:{
+					//jquery 				 : 'jquery/jquery-2.1.3.min',
+					'easel-050'			 : 'canvas/easeljs-0.5.0.min',
+					'tween-030'		 	 : 'canvas/tweenjs-0.3.0.min',
+					'movieclip-050' 	 : 'canvas/movieclip-0.5.0.min',
+					'personagem-05.05.03': 'fgv/fgv.personagem.0.5',
+				}
+			}
+		}
+	}
+};
+
+// Configuração inicial
+
+var node_require = window.require;
+req = requirejs || require;
+req.config( require_packages.default );
+window.require = function(data) {
+    return (typeof data === 'string' ? node_require : req).apply(window, arguments);
+}
+
+/*
+var GLOBAL_METHODS;
+*/
+
+var Framework = function(){
+	this.cachedActives = [];
+};
+
+// Armazena requisições para serem ativadas somente quando o framework 
+// tiver carregado completamente
+Framework.prototype.active = function(  pack, callback ){
+	var self = this;
+	var par = {
+		pack: pack,
+		callback: callback
+	};
+
+	self.cachedActives.push( par );	
+};
+window.framework = window.nm = new Framework();
+
+// LOAD MAIN JQUERY
+var script = document.createElement('script');
+script.onload = function() {
+	setTimeout(function(){
+   	 	
+		require( ['modernizr', 'browserDetect'], function ( Modernizr, browserDetect ) {
+
+			// main style
+			// var style = document.createElement("style");
+			// style.setAttribute('id','defaults');
+			// style.innerHTML = css;
+			// document.getElementsByTagName("head")[0].appendChild(style);
+			// //  main style debug
+			// var link = document.createElement("link");
+			// link.setAttribute('id','defaults_debug');
+			// link.href = '../css/defaults.css';
+			// link.rel  = 'stylesheet';
+			// link.type = 'text/css';
+			// document.getElementsByTagName("head")[0].appendChild(link);
+
+			framework.$ = window.$ = $;
+
+			framework.browser = {};
+
+			framework.init = function(){
+				var self = framework;
+
+				// Permite ao framework enviar o tamanho da tela ao D2L
+				$(window).on('message', function( event ){
+					try{
+						var data = JSON.parse(event.originalEvent.data);
+
+						if (!(data.handler === "d2l.iframe.client")) return;
+						event.originalEvent.source.postMessage(JSON.stringify({
+				            handler: "d2l.iframe.host",
+				            //id: id
+				            height: $('body').height()
+				        }), "*");
+
+					}catch( e ){
+						//console.error("NM IFrame Con ERROR", e);
+					}			        
+				});	
+				
+				
+
+				/*
+				window.postMessage(JSON.stringify({
+		            handler: "d2l.iframe.host",
+		            //id: id
+		            height: 654
+		        }), "*");*/
+
+				self.browserVerify();
+				/*if( blockBrowser.status ){
+					console.error(blockBrowser.msg);
+					//return;
+				};*/
+
+				self.appendModal();
+				$(function(){
+					//self.htmlReplacer();
+					for (var i = self.cachedActives.length - 1; i >= 0; i--) {
+						self.active( self.cachedActives[i].pack, self.cachedActives[i].callback );
+					};
+				});
+
+				//self.htmlReplacers();
+
+				framework.active('nm_ui',function( $, _, nm_ui ){
+
+					if( typeof cachedBefore !== 'undefined' ){	
+						cachedBefore( framework.$, _, nm_ui );
+					}
+
+					framework.nm_ui = nm_ui;
+
+					nm_ui.init(framework.$('body'));
+					//$('.carousel-inner .item').equalHeight();
+					if( typeof cached !== 'undefined' ){	
+						cached( framework.$, _, nm_ui );
+					}			
+
+					self.findAndActivateComponents(framework.$('html'));
+
+					if( typeof cachedAfter !== 'undefined' ){	
+						cachedAfter( framework.$, _, nm_ui );
+					}
+
+					require( ['scorm'], function( Scorm ){
+						framework.scorm = scorm = new Scorm();
+						//scorm.debbug = 'all';
+						scorm.useLocalcache = false;			
+						scorm._publishToTop = true;		
+						scorm._autoFinish = true;
+						scorm.on('connection.success', function( e, c, s ){
+							//console.log('conectado', e, c, s);
+						});
+						scorm.on('connection.fail', function( e, c, s ){
+							//console.log('não conectado', e, c, s);
+						});
+						scorm.on('connection.trying', function( e, c, s ){
+							//console.log('conectado', e, c, s);
+						});
+						scorm.on('connection.always', function( e, c, s ){
+							$('html').toggleClass( 'scorm-connecting', ( scorm.status == 'booting' ) );
+							$('html').toggleClass( ( scorm.useLocalcache )? 'scorm-localcache' : 'scorm-fail', ( scorm.status == 'offline' ) );
+							$('html').toggleClass( 'scorm-success', ( scorm.status == 'online' ) );
+						});
+						scorm.setCacheDefault({
+							'cmi.suspend_data':{ 
+								p: [0],
+								last_page: 0,
+								results:[0]
+						 	}
+					 	});
+
+						if( typeof scormBefore !== 'undefined' ){	
+							scormBefore( framework.$, _, nm_ui, scorm );
+						};
+
+						scorm.connect();
+					});
+
+					framework.$('html').addClass('nm-complete');
+				});
+			};
+
+			framework.findAndActivateComponents = function( $base ){
+				$base.find('[data-active]').each(function(){
+					console.log( framework.$(this).data('active') );
+					var pack = framework.$(this).data('active');
+					framework.active( pack , function( $, _, component  ){
+						if( component && component.init ){ component.init( $base ); }
+						$('html').addClass('nm-'+pack+'-active');
+					});
+				});
+			};
+
+			framework.browserVerify = function(){
+				var ret = {status: false, msg: ""};
+
+				var ua = browserDetect.parse(navigator.userAgent);
+
+				console.log( browserDetect );
+
+				$('html').addClass( 'browser-family-' + ua.browser.family.toLowerCase() );
+				$('html').addClass( 'browser-' + ua.browser.family.toLowerCase() + '-' + ua.browser.major );
+
+				if( !$('html').hasClass('iframe-ignore') ){
+					try {
+				        $('html').addClass( ( window.self !== window.top )? "iframe-inside" : "iframe-outside" );
+				    } catch (e) {
+				        $('html').addClass( "iframe-inside" );
+				    }
+				}
+
+				framework.ua = ua;
+
+				/*
+				return ret;
+				switch( true ){
+					case ( $.browser.msie && parseFloat($.browser.version) < 8 ):
+							ret.status = 'error';
+							ret.msg = "Esse conteúdo não é navegável por browsers anteriores ao Internet Explorer 8.";
+						break;
+					case ( $.browser.msie && parseFloat($.browser.version) == 8 ):
+							ret.status = 'warn';
+							ret.ret = "Esse conteúdo é navegável pelo Internet Explorer 8, mas pode .";
+						break;
+				}*/
+
+				return ret;
+			};
+
+
+			framework.appendModal = function(){
+				var box_modal = framework.$('<!-- Modal --><div class="modal fade" id="modal_framework" tabindex="-1" role="dialog"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button><h4 class="modal-title" id="modal_framework_title">Modal title</h4></div><div class="modal-body"></div><div class="modal-footer"><button type="button" class="btn btn-default" data-dismiss="modal">Fechar</button></div></div><!-- /.modal-content --></div><!-- /.modal-dialog --></div><!-- /.modal -->');
+				framework.$('body').append(box_modal);
+				framework.$('#modal_framework').on('hidden.bs.modal', function (e) {
+					$('#modal_framework .modal-body').html('');
+				});
+			};
+
+			framework.active = function( pack, callback ){
+				var defaults_libs = ['lodash'];
+				var request = Array.prototype.slice.call(arguments);
+				//console.log( 'Ativando', pack );
+
+				pack = pack.split('-');
+				var lib 	= pack[0];
+				var version	= pack[1];
+
+				if( require_packages[ lib ] ){
+					version = version || 'default';
+					//if(!require_packages[ lib ]){ console.warn( 'Biblioteca "' + lib + '" não encontrada no require_packages' ); return; }
+					if(!require_packages[ lib ][ version ]){ console.warn( 'Versão "' + version + '"" da biblioteca "' + lib + '" não encontrada no require_packages' ); return; }
+					var config = framework.$.extend({},require_packages.default, require_packages[ lib ][ version ].config);
+					var scope_require = req.config(config);
+				}else{
+					var scope_require = req.config({});
+				}
+
+				var libs = defaults_libs.concat( [ pack.join('-') ] );
+				//console.log( 'plugins tem que pegar isso?!', libs, config );	
+
+				scope_require( libs, function( _, required ){
+					//console.log( 'plugins pegos?!', libs );				
+					callback( framework.$, _, required);
+				}, function (err) {
+				  console.error('Erro ao carregar modulo', pack, libs, config, err);
+				});
+			};
+
+			$(function(){
+				//window.framework = window.nm = new Framework();
+				framework.init();
+			});
+
+		});
+	});
+}
+document.getElementsByTagName('head')[0].appendChild(script);
+script.src = framework_url + 'js/' + require_packages['default'].paths['jquery2'] + '.js';//"/js/jquery/jquery.js";
