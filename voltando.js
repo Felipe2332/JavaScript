@@ -2,8 +2,8 @@ let numero1 = 1;
 let numero2 = 2;
 const number3 = 3;
 
-
-for(i=0;i<6;i++)
+if(number3 >= 3)
 {
-    console.log("O valor de i é",i);
+    console.log("É igual ou maior que três")
 }
+
