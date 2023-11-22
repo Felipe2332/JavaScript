@@ -1,6 +1,8 @@
 let numero1 = 1;
 let numero2 = 2;
 const number3 = 3;
+console.log(numero1);
+
 
 if(number3 >= 3)
 {
