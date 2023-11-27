@@ -22,6 +22,11 @@
 
         js_nome = window.prompt('Entre com seu nome','Digite seu nome nesta caixa');
 
+        if(js_nome == null)
+        {
+            window.prompt('Entre com seu nome caralho','Digite seu nome nesta caixa');
+        }
+
         /*Saída de dados*/
         document.write('Olá ' + js_nome + ' Seja bem vindo');
 
