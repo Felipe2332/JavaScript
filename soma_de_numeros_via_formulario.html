@@ -7,8 +7,9 @@
     <body>
         <h3>Bem vindo ao primeiro cálculo de soma via formulário</h3>
         <form name="Formcalculo" action="" method="post">
-            Digite o primeiro valor ...: <input type="text" name="primeiro" /><br />
-            Digite o segundo valor ...: <input type="text" name="segundo" /><br />
+            Digite o primeiro valor : <input type="text" name="primeiro" /><br />
+            Digite o segundo valor : <input type="text" name="segundo" /><br />
+            Digite o terceiro valor : <input type="text" name = "terceiro"/> <br />
 
             <input type="button" name="btn_somar" value="somar" onclick="soma()" />
             <input type="reset" name="btn_apagar" value="apagar" />
@@ -29,6 +30,7 @@
                 //Entrada de dados
             numero1= parseInt(document.Formcalculo.primeiro.value);
             numero2= parseInt(document.Formcalculo.segundo.value);
+
 
             //Calculo
 
