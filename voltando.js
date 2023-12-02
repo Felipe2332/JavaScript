@@ -8,3 +8,4 @@ if(number3 >= 3)
 }
 
 console.log("Atualização")
+numero1++; // Incrementa o valor de um número em 1
