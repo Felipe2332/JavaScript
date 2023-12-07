@@ -6,4 +6,3 @@ if(number3 >= 3)
 {
     console.log("É igual ou maior que três")
 }
-
